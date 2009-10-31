@@ -213,6 +213,12 @@ namespace SubSonic.Linq.Structure
                         return m;
                 }
             }
+            else if (m.Member.MemberType == System.Reflection.MemberTypes.Property)
+            {   // this logic block is to allow for a reflected property to be used in the where clause.
+                // Kenneth Carter 10/30/2009
+                sb.Append(m.Member.Name);
+                return m;
+            }
             throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
         }
 
