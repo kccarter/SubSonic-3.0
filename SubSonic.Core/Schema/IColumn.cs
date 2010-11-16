@@ -11,11 +11,13 @@ namespace SubSonic.Schema
         bool IsNullable { get; set; }
         bool IsReadOnly { get; set; }
         bool IsComputed { get; set; }
+        bool IsUnique { get; set; }
         bool AutoIncrement { get; set; }
         int NumberScale { get; set; }
         int NumericPrecision { get; set; }
         bool IsPrimaryKey { get; set; }
         object DefaultSetting { get; set; }
+        object DefaultValue { get; }
         string ParameterName { get; }
         string PropertyName { get; set; }
 
@@ -46,5 +48,8 @@ namespace SubSonic.Schema
         string CreateSql { get; }
         string AlterSql { get; }
         string DeleteSql { get; }
+        string ConstraintSql { get; }
+
+        bool HasDefaultConstraint { get; }
     }
 }

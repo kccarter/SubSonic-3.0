@@ -43,6 +43,5 @@ namespace SubSonic.Schema
         void SetKeyValue(object value);
         void SetIsLoaded(bool isLoaded);
         void SetIsNew(bool isLoaded);
-
     }
 }

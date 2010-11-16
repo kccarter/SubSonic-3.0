@@ -177,7 +177,7 @@ namespace SubSonic.Extensions
 						currentProp.SetValue(item, nullEnumObjectValue, null);
 					}
                     else
-                        currentProp.SetValue(item, rdr.GetValue(i).ChangeTypeTo(valueType), null);
+                        currentProp.SetValue(item, rdr.GetValue(i).ChangeTypeTo(currentProp.PropertyType), null);
                 }
                 else if(currentField != null && !DBNull.Value.Equals(rdr.GetValue(i)))
                 {
@@ -197,7 +197,7 @@ namespace SubSonic.Extensions
 						currentField.SetValue(item, nullEnumObjectValue);
 					}
                     else
-                        currentField.SetValue(item, rdr.GetValue(i).ChangeTypeTo(valueType));
+                        currentField.SetValue(item, rdr.GetValue(i).ChangeTypeTo(currentField.FieldType));
                 }
             }
 

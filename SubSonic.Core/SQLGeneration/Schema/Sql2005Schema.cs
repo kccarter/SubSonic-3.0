@@ -15,6 +15,11 @@ using System.Data;
 using System.Text;
 using SubSonic.Schema;
 using System;
+using System.Linq;
+using System.Collections.Generic;
+using SubSonic.DataProviders;
+using SubSonic.Query;
+using System.Data.SqlClient;
 
 namespace SubSonic.SqlGeneration.Schema
 {
@@ -27,6 +32,54 @@ namespace SubSonic.SqlGeneration.Schema
             CREATE_TABLE = "CREATE TABLE [{0}] ({1} \r\n);";
             DROP_COLUMN = @"ALTER TABLE [{0}] DROP COLUMN {1};";
             DROP_TABLE = @"DROP TABLE {0};";
+            GET_DB_CONSTRAINTS =
+@"SELECT OBJECT_NAME(OBJECT_ID) AS Name, SCHEMA_NAME(schema_id) AS SchemaName, OBJECT_NAME(parent_object_id) AS TableName, type_desc AS Type
+FROM sys.objects
+WHERE type_desc LIKE '%CONSTRAINT' AND OBJECT_NAME(OBJECT_ID) NOT LIKE 'PK__%'";
+            GET_DB_COLUMN_DEFINITIONS =
+@"SELECT 
+	TABLE_CATALOG,
+	TABLE_SCHEMA,
+	TABLE_NAME,
+	COLUMN_NAME,
+	ORDINAL_POSITION,
+	COLUMN_DEFAULT, 
+	DATA_TYPE, 
+	CHARACTER_MAXIMUM_LENGTH, 
+	DATETIME_PRECISION AS DatePrecision, 
+	CASE WHEN IS_NULLABLE ='NO' THEN 0 ELSE 1 END AS IsNullable,
+    COLUMNPROPERTY(object_id('[' + TABLE_SCHEMA + '].[' + TABLE_NAME + ']'), COLUMN_NAME, 'IsIdentity') AS IsIdentity,
+	COLUMNPROPERTY(object_id('[' + TABLE_SCHEMA + '].[' + TABLE_NAME + ']'), COLUMN_NAME, 'IsComputed') as IsComputed 
+FROM INFORMATION_SCHEMA.COLUMNS ORDER BY TABLE_NAME, ORDINAL_POSITION ASC";
+
+        }
+        /// <summary>
+        /// Get's a list of all contraints in the database that are not primary key contraints
+        /// </summary>
+        /// <param name="Provider"></param>
+        /// <returns></returns>
+        public override IEnumerable<IConstraint> GetConstraintsFromDB(IDataProvider Provider)
+        {
+            var Inline = new InlineQuery(Provider, GET_DB_CONSTRAINTS);
+
+            constraints = Inline.ExecuteTypedList<DatabaseContraint>()
+                .Select((X) =>
+                    (IConstraint)X)
+                .ToList();
+
+            return constraints;
+        }
+
+        public override IEnumerable<IColumnDefinition> GetColumnDefinitionsFromDB(IDataProvider Provider)
+        {
+            var Inline = new InlineQuery(Provider, GET_DB_COLUMN_DEFINITIONS);
+
+            columnDefinitions = Inline.ExecuteTypedList<DBColumnDefinition>()
+                .Select((X) =>
+                    (IColumnDefinition)X)
+                .ToList();
+
+            return columnDefinitions;
         }
 
         /// <summary>
@@ -64,22 +117,26 @@ namespace SubSonic.SqlGeneration.Schema
             return sql.ToString();
         }
 
-        public override string BuildCreateTableStatement(ITable table)
+        public override string BuildCreateTableStatement(ITable table, bool includeComputedColumns)
         {
-            var result = base.BuildCreateTableStatement(table);
+            StringBuilder oSql = new StringBuilder(base.BuildCreateTableStatement(table, includeComputedColumns));
+
+            List<IColumn> PrimaryKeys = table.Columns.Where((X) => X.IsPrimaryKey).ToList();
 
             //add a named PK constraint so we can drop it later
-            result += "ALTER TABLE " + table.QualifiedName + "\r\n";
-            result += string.Format("ADD CONSTRAINT PK_{0}_{1} PRIMARY KEY([{1}])", table.Name, table.PrimaryKey.Name);
+            oSql.AppendLine();
+            oSql.AppendFormat("ALTER TABLE {0} ADD CONSTRAINT [PK_{1}_{2}] PRIMARY KEY({3})", table.QualifiedName, table.Name, String.Join("_", PrimaryKeys.Select((X) => X.Name).ToArray()), String.Join(", ", PrimaryKeys.Select((X) => String.Format("[{0}]", X.Name)).ToArray()));
+            oSql.AppendLine();
 
-            return result;
+            return oSql.ToString();
         }
 
         public override string GetNativeType(DbType dbType)
         {
-            switch(dbType)
+            switch (dbType)
             {
                 case DbType.Object:
+                    return "varbinary";
                 case DbType.AnsiString:
                 case DbType.AnsiStringFixedLength:
                 case DbType.String:
@@ -89,8 +146,9 @@ namespace SubSonic.SqlGeneration.Schema
                     return "bit";
                 case DbType.SByte:
                 case DbType.Binary:
-                case DbType.Byte:
                     return "image";
+                case DbType.Byte:
+                    return "tinyint";
                 case DbType.Currency:
                     return "money";
                 case DbType.Time:
@@ -103,13 +161,15 @@ namespace SubSonic.SqlGeneration.Schema
                     return "float";
                 case DbType.Guid:
                     return "uniqueidentifier";
-                case DbType.UInt32:
-                case DbType.UInt16:
                 case DbType.Int16:
+                case DbType.UInt16:
+                    return "smallint";
                 case DbType.Int32:
+                case DbType.UInt32:
+                    return "int";
                 case DbType.UInt64:
                 case DbType.Int64:
-                    return "int";
+                    return "bigint";
                 case DbType.Single:
                     return "real";
                 case DbType.VarNumeric:
@@ -124,12 +184,12 @@ namespace SubSonic.SqlGeneration.Schema
         /// <summary>
         /// Sets the column attributes.
         /// </summary>
-        /// <param name="column">The column.</param>
+        /// <param name="Column">The column.</param>
         /// <returns></returns>
-        public override string GenerateColumnAttributes(IColumn column)
+        public override string GenerateColumnAttributes(IColumn Column, bool exist)
         {
             StringBuilder sb = new StringBuilder();
-            if(column.DataType == DbType.String && column.MaxLength > 8000)
+            if (Column.DataType == DbType.String && Column.MaxLength > 8000)
             {
                 //use nvarchar MAX 
                 //TODO - this won't work for SQL 2000
@@ -138,39 +198,63 @@ namespace SubSonic.SqlGeneration.Schema
             }
             else
             {
-                sb.Append(" " + GetNativeType(column.DataType));
+                sb.Append(" " + GetNativeType(Column.DataType));
 
-                if(column.MaxLength > 0)
-                    sb.Append("(" + column.MaxLength + ")");
+                if (Column.MaxLength > 0)
+                    sb.Append("(" + Column.MaxLength + ")");
 
-                if(column.DataType == DbType.Decimal)
-                    sb.Append("(" + column.NumericPrecision + ", " + column.NumberScale + ")");
+                if (Column.DataType == DbType.Decimal)
+                    sb.Append("(" + Column.NumericPrecision + ", " + Column.NumberScale + ")");
             }
 
-            if(column.IsPrimaryKey | ! column.IsNullable)
+            if (Column.IsPrimaryKey | !Column.IsNullable)
                 sb.Append(" NOT NULL");
 
-            if(column.IsPrimaryKey && column.IsNumeric)
+            if (!exist && (Column.IsPrimaryKey && Column.IsNumeric && Column.AutoIncrement))
                 sb.Append(" IDENTITY(1,1)");
-            else if (column.IsPrimaryKey && column.DataType==DbType.Guid)
-                column.DefaultSetting="NEWID()";
+            else if (!exist && (Column.IsPrimaryKey && Column.DataType == DbType.Guid))
+                Column.DefaultSetting = "NEWID()";
 
 
-            if(column.DefaultSetting != null)
+            if (!exist && Column.DefaultSetting != null)
             {
-
-                var defaultType = column.DefaultSetting.GetType();
-                var defaultValue = column.DefaultSetting;
-                if (defaultType == typeof(string) || defaultType == typeof(DateTime)) {
-                    if(!column.DefaultSetting.ToString().EndsWith("()"))
-                        defaultValue = string.Format("'{0}'", defaultValue);
-                }
-                
-                sb.Append(" CONSTRAINT DF_" + column.Table.Name + "_" + column.Name + " DEFAULT (" +
-                          defaultValue + ")");
+                sb.Append(" CONSTRAINT DF_" + Column.Table.Name + "_" + Column.Name + " DEFAULT (" +
+                          GetDefaultValue(Column).ToString() + ")");
             }
 
             return sb.ToString();
+        }
+
+        public override object GetDefaultValue(IColumn Column)
+        {
+            object oResult = null;
+
+            if (Column.DefaultSetting != null)
+            {
+                Type oType = Column.DefaultSetting.GetType();
+
+                if (oType == typeof(string) || oType == typeof(DateTime))
+                {
+                    if (!Column.DefaultSetting.ToString().EndsWith("()"))
+                    {
+                        oResult = String.Format("'{0}'", Column.DefaultSetting);
+                    }
+                    else
+                    {
+                        oResult = Column.DefaultSetting;
+                    }
+                }
+                else if (oType == typeof(bool))
+                {
+                    oResult = (bool)Column.DefaultSetting ? 1 : 0;
+                }
+                else
+                {
+                    oResult = Column.DefaultSetting;
+                }
+            }
+
+            return oResult;
         }
 
         /// <summary>
@@ -180,7 +264,7 @@ namespace SubSonic.SqlGeneration.Schema
         /// <returns></returns>
         public override DbType GetDbType(string sqlType)
         {
-            switch(sqlType)
+            switch (sqlType)
             {
                 case "varchar":
                     return DbType.AnsiString;

@@ -19,13 +19,29 @@ namespace SubSonic.DataProviders
 {
     public static class ProviderFactory
     {
-        //private static Dictionary<string, IDataProvider> _dataProviders = new Dictionary<string, IDataProvider>();
+        private struct Keys
+        {
+            public const string Default = "default";
+        }
+
+        private static Dictionary<string, IDataProvider> _dataProviders = new Dictionary<string, IDataProvider>();
 
         public static IDataProvider GetProvider()
         {
-            string connString = ConfigurationManager.ConnectionStrings[ConfigurationManager.ConnectionStrings.Count - 1].ConnectionString;
-            string providerName = ConfigurationManager.ConnectionStrings[ConfigurationManager.ConnectionStrings.Count - 1].ProviderName;
-            return LoadProvider(connString, providerName);
+            if (ConfigurationManager.ConnectionStrings.Count > 0)
+            {
+                string connString = ConfigurationManager.ConnectionStrings[ConfigurationManager.ConnectionStrings.Count - 1].ConnectionString;
+                string providerName = ConfigurationManager.ConnectionStrings[ConfigurationManager.ConnectionStrings.Count - 1].ProviderName;
+                return LoadProvider(connString, providerName);
+            }
+            else if (_dataProviders.ContainsKey(Keys.Default))
+            {
+                return _dataProviders[Keys.Default];
+            }
+            else
+            {
+                return null;
+            }
         }
 
         public static IDataProvider GetProvider(string connectionStringName)
@@ -35,12 +51,35 @@ namespace SubSonic.DataProviders
 
             string connString = ConfigurationManager.ConnectionStrings[connectionStringName].ConnectionString;
             string providerName = ConfigurationManager.ConnectionStrings[connectionStringName].ProviderName;
-            return LoadProvider(connString, providerName);
+
+            IDataProvider Provider = LoadProvider(connString, providerName);
+
+            if (!_dataProviders.ContainsKey(Keys.Default))
+            {   /// there are no connections defined
+                _dataProviders.Add(Keys.Default, Provider);
+            }
+            else if (!_dataProviders.ContainsKey(connectionStringName))
+            {
+                _dataProviders.Add(connectionStringName, Provider);
+            }
+            else
+            {
+                _dataProviders[connectionStringName] = Provider;
+            }
+
+            return Provider;
         }
 
         public static IDataProvider GetProvider(string connectionString, string providerName)
         {
-            return LoadProvider(connectionString, providerName);
+            IDataProvider Provider = LoadProvider(connectionString, providerName);
+
+            if (!_dataProviders.ContainsKey(Keys.Default))
+            {   /// there are no connections defined
+                _dataProviders.Add(Keys.Default, Provider);
+            }
+
+            return Provider;
         }
 
         //TODO: Why do we need this? How can we have a schema if we don't know the connection?

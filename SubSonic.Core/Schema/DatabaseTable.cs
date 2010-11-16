@@ -114,7 +114,12 @@ namespace SubSonic.Schema
 
         public string CreateSql
         {
-            get { return Provider.SchemaGenerator.BuildCreateTableStatement(this); }
+            get { return Provider.SchemaGenerator.BuildCreateTableStatement(this, true); }
+        }
+
+        public string ConstraintsSql
+        {
+            get { return Provider.SchemaGenerator.BuildTableConstraintStatement(this); }
         }
 
         public string DropSql

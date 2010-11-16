@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Text;
+using System.Linq;
 using SubSonic.Extensions;
 using SubSonic.DataProviders;
 using SubSonic.Schema;
@@ -28,11 +29,52 @@ namespace SubSonic.SqlGeneration.Schema
     public abstract class ANSISchemaGenerator : ISchemaGenerator
     {
         protected string ADD_COLUMN = @"ALTER TABLE {0} ADD {1}{2};";
+        protected string ADD_DEFAULT_CONSTRAINT = @"ALTER TABLE [{0}] ADD CONSTRAINT [DF_{0}_{1}] DEFAULT ({2}) FOR [{1}]";
+        protected string ADD_UNIQUE_CONSTRAINT = @"ALTER TABLE [{0}] ADD CONSTRAINT [UNIQUE_{0}_{1}] UNIQUE({2})";
+        protected string ADD_FOREIGN_KEY_CONSTRAINT = @"ALTER TABLE [{0}] ADD CONSTRAINT [FK_{0}_{1}] FOREIGN KEY({2}) REFERENCES [{1}]({3})";
         protected string ALTER_COLUMN = @"ALTER TABLE {0} ALTER COLUMN {1}{2};";
         protected string CREATE_TABLE = "CREATE TABLE {0} ({1} \r\n);";
         protected string DROP_COLUMN = @"ALTER TABLE {0} DROP COLUMN {1};";
         protected string DROP_TABLE = @"DROP TABLE {0};";
+        protected string DROP_CONSTRAINT = @"ALTER TABLE [{0}].[{1}] DROP CONSTRAINT [{2}]";
+        protected string GET_DB_CONSTRAINTS = "";
+        protected string GET_DB_COLUMN_DEFINITIONS = "";
+        protected List<IConstraint> constraints = null;
+        protected List<IColumnDefinition> columnDefinitions = null;
 
+        public abstract IEnumerable<IConstraint> GetConstraintsFromDB(IDataProvider Provider);
+        public abstract IEnumerable<IColumnDefinition> GetColumnDefinitionsFromDB(IDataProvider Provider);
+
+        public virtual IConstraint GetDefaultConstraintForColumn(IColumn Column)
+        {
+            return Constraints.SingleOrDefault((X) => X.TableName == Column.Table.Name && X.Name == String.Format("DF_{0}_{1}", Column.Table.Name, Column.Name));
+        }
+
+        public IEnumerable<IConstraint> Constraints
+        {
+            get
+            {
+                if (constraints == null)
+                {
+                    constraints = GetConstraintsFromDB(ProviderFactory.GetProvider()).ToList();
+                }
+
+                return constraints;
+            }
+        }
+
+        public IEnumerable<IColumnDefinition> ColumnDefinitions
+        {
+            get
+            {
+                if (columnDefinitions == null)
+                {
+                    columnDefinitions = GetColumnDefinitionsFromDB(ProviderFactory.GetProvider()).ToList();
+                }
+
+                return columnDefinitions;
+            }
+        }
 
         #region ISchemaGenerator Members
 
@@ -41,10 +83,30 @@ namespace SubSonic.SqlGeneration.Schema
         /// </summary>
         /// <param name="table"></param>
         /// <returns></returns>
-        public virtual string BuildCreateTableStatement(ITable table)
+        public virtual string BuildCreateTableStatement(ITable table, bool includeComputedColumns)
         {
-            string columnSql = GenerateColumns(table);
+            string columnSql = GenerateColumns(table, includeComputedColumns);
             return string.Format(CREATE_TABLE, table.Name, columnSql);
+        }
+
+        public virtual string BuildTableConstraintStatement(ITable Table)
+        {
+            StringBuilder oSql = new StringBuilder();
+
+            List<IColumn> ForeignKeyColumns = Table.Columns.Where((X) => X.IsForeignKey).ToList();
+            List<IColumn> UniqueColumns = Table.Columns.Where((X) => X.IsUnique).ToList();
+
+            foreach (IColumn Column in ForeignKeyColumns)
+            {   /// apply foreign key constraints
+                oSql.AppendLine(String.Format(ADD_FOREIGN_KEY_CONSTRAINT, Table, Column.ForeignKeyTo, Table.Columns.Single((X) => X.Name == Column.ForeignKeyTo.PrimaryKey.Name), Column.ForeignKeyTo.PrimaryKey));
+            }
+            
+            if (UniqueColumns.Count > 0)
+            {   /// apply unique constraint
+                oSql.AppendLine(String.Format(ADD_UNIQUE_CONSTRAINT, Table, String.Join("_", UniqueColumns.Select((X) => X.Name).ToArray()), String.Join(", ", UniqueColumns.Select((X) => X.Name).ToArray())));
+            }
+
+            return oSql.ToString();
         }
 
         /// <summary>
@@ -55,6 +117,35 @@ namespace SubSonic.SqlGeneration.Schema
         public virtual string BuildDropTableStatement(string tableName)
         {
             return string.Format(DROP_TABLE, tableName);
+        }
+
+        public virtual bool BuildDropDBConstraintStatement(IDataProvider Provider, ref string Sql)
+        {   /// Get the list of constraints
+            IEnumerable<IConstraint> Constraints = GetConstraintsFromDB(Provider);
+            ///determine that we have constraints
+            Boolean hasConstraints = Constraints.Count() > 0;
+
+            if (hasConstraints)
+            {
+                try
+                {
+                    StringBuilder oSql = new StringBuilder();
+
+                    foreach (IConstraint Constraint in Constraints)
+                    {
+                        oSql.AppendLine(String.Format(DROP_CONSTRAINT, Constraint.SchemaName, Constraint.TableName, Constraint.Name));
+                    }
+
+                    Sql = oSql.ToString();
+                }
+                catch
+                {
+                    hasConstraints = false;
+                    Sql = String.Empty;
+                }
+            }
+
+            return hasConstraints;
         }
 
         /// <summary>
@@ -74,22 +165,26 @@ namespace SubSonic.SqlGeneration.Schema
                 SetColumnDefaults(column);
             }
 
-            sql.AppendFormat(ADD_COLUMN, tableName, column.Name, GenerateColumnAttributes(column));
-            
-            //if the column isn't nullable and there are records already
-            //the default setting won't be honored and a null value could be entered (in SQLite for instance)
-            //enforce the default setting here
-            if(!column.IsNullable)
-            {
-                sql.AppendLine();
-                if (column.IsString || column.IsDateTime)
-                    sql.AppendFormat("UPDATE {0} SET {1}='{2}';", tableName, column.Name, column.DefaultSetting);
-                else {
-                    sql.AppendFormat("UPDATE {0} SET {1}={2};", tableName, column.Name, column.DefaultSetting);
-                }
-            }
+            sql.AppendFormat(ADD_COLUMN, tableName, column.Name, GenerateColumnAttributes(column, false));
             
             return sql.ToString();
+        }
+
+        public virtual string BuildDefaultConstraintStatement(IColumn Column)
+        {
+            StringBuilder oSql = new StringBuilder();
+
+            if (Column.Table == null)
+            {
+                throw new InvalidOperationException("column must be a part of a defined table.");
+            }
+
+            if (Column.DefaultSetting != null)
+            {
+                oSql.AppendFormat(ADD_DEFAULT_CONSTRAINT, Column.Table.Name, Column.Name, Column.DefaultValue);
+            }
+
+            return oSql.ToString();
         }
 
         /// <summary>
@@ -99,7 +194,7 @@ namespace SubSonic.SqlGeneration.Schema
         public virtual string BuildAlterColumnStatement(IColumn column)
         {
             var sql = new StringBuilder();
-            sql.AppendFormat(ALTER_COLUMN, column.Table.Name, column.Name, GenerateColumnAttributes(column));
+            sql.AppendFormat(ALTER_COLUMN, column.Table.Name, column.Name, GenerateColumnAttributes(column, column.Provider.GetTableFromDB(column.Table.Name) != null));
             return sql.ToString();
         }
 
@@ -130,12 +225,12 @@ namespace SubSonic.SqlGeneration.Schema
         /// <returns>
         /// SQL fragment representing the supplied columns.
         /// </returns>
-        public virtual string GenerateColumns(ITable table)
+        public virtual string GenerateColumns(ITable table, bool includeComputedColumns)
         {
             StringBuilder createSql = new StringBuilder();
 
-            foreach(IColumn col in table.Columns)
-                createSql.AppendFormat("\r\n  [{0}]{1},", col.Name, GenerateColumnAttributes(col));
+            foreach (IColumn col in table.Columns.Where((X) => (includeComputedColumns && (X.IsComputed || !X.IsComputed)) || !X.IsComputed))
+                createSql.AppendFormat("\r\n  [{0}]{1},", col.Name, GenerateColumnAttributes(col, table.Provider.GetTableFromDB(table.Name) != null));
             string columnSql = createSql.ToString();
             return columnSql.Chop(",");
         }
@@ -145,7 +240,14 @@ namespace SubSonic.SqlGeneration.Schema
         /// </summary>
         /// <param name="column">The column.</param>
         /// <returns></returns>
-        public abstract string GenerateColumnAttributes(IColumn column);
+        public abstract string GenerateColumnAttributes(IColumn column, bool exist);
+
+        /// <summary>
+        /// Get's the default value from the default column setting
+        /// </summary>
+        /// <param name="Column"></param>
+        /// <returns></returns>
+        public abstract object GetDefaultValue(IColumn Column);
 
         ///<summary>
         ///Gets an ITable from the DB based on name

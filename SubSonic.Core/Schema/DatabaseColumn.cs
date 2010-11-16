@@ -54,11 +54,28 @@ namespace SubSonic.Schema
         public bool IsNullable { get; set; }
         public bool IsReadOnly { get; set; }
         public bool IsComputed { get; set; }
+        public bool IsUnique { get; set; }
         public bool AutoIncrement { get; set; }
         public int NumberScale { get; set; }
         public int NumericPrecision { get; set; }
         public bool IsPrimaryKey { get; set; }
         public object DefaultSetting { get; set; }
+
+        public bool HasDefaultConstraint
+        {
+            get
+            {
+                return DefaultSetting != null && Provider.SchemaGenerator.GetDefaultConstraintForColumn(this) != null;
+            }
+        }
+
+        public object DefaultValue
+        {
+            get
+            {
+                return Provider.SchemaGenerator.GetDefaultValue(this);
+            }
+        }
 
         public string SchemaName
         {
@@ -152,6 +169,11 @@ namespace SubSonic.Schema
             get { return Provider.SchemaGenerator.BuildAddColumnStatement(Table.Name, this); }
         }
 
+        public string ConstraintSql
+        {
+            get { return Provider.SchemaGenerator.BuildDefaultConstraintStatement(this); }
+        }
+
         public string AlterSql
         {
             get { return Provider.SchemaGenerator.BuildAlterColumnStatement(this); }
@@ -197,5 +219,20 @@ namespace SubSonic.Schema
         {
             return base.GetHashCode();
         }
+    }
+
+    public class DBColumnDefinition : IColumnDefinition
+    {
+        public string Table_Catalog { get; set; }
+        public string Table_Schema { get; set; }
+        public string Table_Name { get; set; }
+        public string Column_Name { get; set; }
+        public int Ordinal_Position { get; set; }
+        public string Column_Default { get; set; }
+        public bool IsNullable { get; set; }
+        public string Data_Type { get; set; }
+        public int? Character_Maximum_Length { get; set; }
+        public bool IsIdentity { get; set; }
+        public bool IsComputed { get; set; }
     }
 }

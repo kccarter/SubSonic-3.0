@@ -15,6 +15,8 @@ using System;
 using System.Data;
 using System.Text;
 using SubSonic.Schema;
+using SubSonic.DataProviders;
+using System.Collections.Generic;
 
 namespace SubSonic.SqlGeneration.Schema
 {
@@ -33,7 +35,7 @@ namespace SubSonic.SqlGeneration.Schema
 
         public override string GetNativeType(DbType dbType)
         {
-            switch(dbType)
+            switch (dbType)
             {
                 case DbType.Object:
                 case DbType.AnsiString:
@@ -95,12 +97,33 @@ namespace SubSonic.SqlGeneration.Schema
             return "";
         }
 
+        public override string BuildAddColumnStatement(string tableName, IColumn column)
+        {
+            StringBuilder oSql = new StringBuilder( base.BuildAddColumnStatement(tableName, column));
+
+            //if the column isn't nullable and there are records already
+            //the default setting won't be honored and a null value could be entered (in SQLite for instance)
+            //enforce the default setting here
+            if (!column.IsNullable)
+            {
+                oSql.AppendLine();
+                if ((column.IsString || column.IsDateTime) && !column.DefaultSetting.ToString().EndsWith("()"))
+                    oSql.AppendFormat("UPDATE {0} SET {1}='{2}';", tableName, column.Name, column.DefaultSetting);
+                else
+                {
+                    oSql.AppendFormat("UPDATE {0} SET {1}={2};", tableName, column.Name, column.DefaultSetting);
+                }
+            }
+
+            return oSql.ToString();
+        }
+
         /// <summary>
         /// Sets the column attributes.
         /// </summary>
         /// <param name="column">The column.</param>
         /// <returns></returns>
-        public override string GenerateColumnAttributes(IColumn column)
+        public override string GenerateColumnAttributes(IColumn column, bool exist)
         {
             StringBuilder sb = new StringBuilder();
             if (column.DataType == DbType.String && column.MaxLength > 8000)
@@ -113,29 +136,34 @@ namespace SubSonic.SqlGeneration.Schema
             else
                 sb.Append(" " + GetNativeType(column.DataType));
 
-            if(column.IsPrimaryKey)
+            if (column.IsPrimaryKey)
             {
                 sb.Append(" NOT NULL PRIMARY KEY");
-                if(column.IsNumeric)
+                if (column.IsNumeric)
                     sb.Append(" AUTOINCREMENT ");
             }
             else
             {
-                if(column.IsString && column.MaxLength < 8000)
+                if (column.IsString && column.MaxLength < 8000)
                     sb.Append("(" + column.MaxLength + ")");
-                else if(column.DataType == DbType.Double || column.DataType == DbType.Decimal)
+                else if (column.DataType == DbType.Double || column.DataType == DbType.Decimal)
                     sb.Append("(" + column.NumericPrecision + ", " + column.NumberScale + ")");
 
-                if(!column.IsNullable)
+                if (!column.IsNullable)
                     sb.Append(" NOT NULL");
                 else
                     sb.Append(" NULL");
 
-                if(column.DefaultSetting != null)
+                if (column.DefaultSetting != null)
                     sb.Append(" DEFAULT '" + column.DefaultSetting + "'");
             }
 
             return sb.ToString();
+        }
+
+        public override object GetDefaultValue(IColumn Column)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -204,7 +232,8 @@ namespace SubSonic.SqlGeneration.Schema
         }
 
 
-        public override void SetColumnDefaults(IColumn column) {
+        public override void SetColumnDefaults(IColumn column)
+        {
             if (column.IsNumeric)
                 column.DefaultSetting = 0;
             else if (column.IsDateTime)
@@ -214,6 +243,15 @@ namespace SubSonic.SqlGeneration.Schema
             else if (column.DataType == DbType.Boolean)
                 column.DefaultSetting = false;
         }
-    
+
+        public override IEnumerable<IConstraint> GetConstraintsFromDB(IDataProvider Provider)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override IEnumerable<IColumnDefinition> GetColumnDefinitionsFromDB(IDataProvider Provider)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

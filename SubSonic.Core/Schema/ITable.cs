@@ -24,6 +24,7 @@ namespace SubSonic.Schema
         IColumn Descriptor { get; }
 
         string CreateSql { get; }
+        string ConstraintsSql { get; }
         string DropSql { get; }
         IColumn GetColumn(string columName);
         IColumn GetColumnByPropertyName(string columName);

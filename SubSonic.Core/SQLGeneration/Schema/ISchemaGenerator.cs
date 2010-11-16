@@ -14,6 +14,7 @@
 using System.Data;
 using SubSonic.DataProviders;
 using SubSonic.Schema;
+using System.Collections.Generic;
 
 namespace SubSonic.SqlGeneration.Schema
 {
@@ -24,7 +25,7 @@ namespace SubSonic.SqlGeneration.Schema
         /// </summary>
         /// <param name="table"></param>
         /// <returns></returns>
-        string BuildCreateTableStatement(ITable table);
+        string BuildCreateTableStatement(ITable table, bool includeComputedColumns);
 
         /// <summary>
         /// Builds a DROP TABLE statement.
@@ -39,6 +40,22 @@ namespace SubSonic.SqlGeneration.Schema
         /// <param name="tableName">Name of the table.</param>
         /// <param name="column">The column.</param>
         string BuildAddColumnStatement(string tableName, IColumn column);
+
+        bool BuildDropDBConstraintStatement(IDataProvider Provider, ref string Sql);
+
+        /// <summary>
+        /// Builds a column constraint statement
+        /// </summary>
+        /// <param name="column"></param>
+        /// <returns></returns>
+        string BuildDefaultConstraintStatement(IColumn column);
+
+        /// <summary>
+        /// Builds the Foreign key and Unique Constraints for a table.
+        /// </summary>
+        /// <param name="Table">Table Object</param>
+        /// <returns>Constraint Sql</returns>
+        string BuildTableConstraintStatement(ITable Table);
 
         /// <summary>
         /// Alters the column.
@@ -68,17 +85,30 @@ namespace SubSonic.SqlGeneration.Schema
         /// <returns>
         /// SQL fragment representing the supplied columns.
         /// </returns>
-        string GenerateColumns(ITable table);
+        string GenerateColumns(ITable table, bool includeComputedColumns);
 
         /// <summary>
         /// Sets the column attributes.
         /// </summary>
         /// <param name="column">The column.</param>
         /// <returns></returns>
-        string GenerateColumnAttributes(IColumn column);
+        string GenerateColumnAttributes(IColumn column, bool exist);
+
+        /// <summary>
+        /// Get the columns default value based on default settings.
+        /// </summary>
+        /// <param name="Column"></param>
+        /// <returns></returns>
+        object GetDefaultValue(IColumn Column);
 
         ITable GetTableFromDB(IDataProvider provider, string tableName);
+        IEnumerable<IConstraint> GetConstraintsFromDB(IDataProvider Provider);
+        IEnumerable<IColumnDefinition> GetColumnDefinitionsFromDB(IDataProvider Provider);
+        IConstraint GetDefaultConstraintForColumn(IColumn Column);
         string[] GetTableList(IDataProvider provider);
         DbType GetDbType(string sqlType);
+
+        IEnumerable<IConstraint> Constraints { get; }
+        IEnumerable<IColumnDefinition> ColumnDefinitions { get; }
     }
 }

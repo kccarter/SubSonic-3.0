@@ -28,29 +28,29 @@ namespace SubSonic.Query
     /// <summary>
     /// A class which wraps an inline SQL call
     /// </summary>
-    public class CodingHorror : ISqlQuery
+    public class InlineQuery : ISqlQuery
     {
         private readonly QueryCommand _command;
         private readonly IDataProvider _provider;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CodingHorror"/> class.
+        /// Initializes a new instance of the <see cref="InlineQuery"/> class.
         /// Warning: This method assumes the default provider is intended.
         /// Call InlineQuery(string providerName) if this is not the case.
         /// </summary>
         /// <param name="sql">The SQL.</param>
-        public CodingHorror(string sql)
+        public InlineQuery(string sql)
         {
             _provider = ProviderFactory.GetProvider();
             _command = new QueryCommand(sql, _provider);
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CodingHorror"/> class.
+        /// Initializes a new instance of the <see cref="InlineQuery"/> class.
         /// </summary>
         /// <param name="sql">The SQL.</param>
         /// <param name="values">The values.</param>
-        public CodingHorror(string sql, params object[] values)
+        public InlineQuery(string sql, params object[] values)
         {
             _provider = ProviderFactory.GetProvider();
             _command = new QueryCommand(sql, _provider);
@@ -58,22 +58,22 @@ namespace SubSonic.Query
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CodingHorror"/> class.
+        /// Initializes a new instance of the <see cref="InlineQuery"/> class.
         /// </summary>
         /// <param name="provider">The provider.</param>
-        public CodingHorror(IDataProvider provider)
+        public InlineQuery(IDataProvider provider)
         {
             _provider = provider;
         }
 
-        public CodingHorror(IDataProvider provider, string sql, params object[] values)
+        public InlineQuery(IDataProvider provider, string sql, params object[] values)
         {
             _provider = provider;
             _command = new QueryCommand(sql, _provider);
             LoadCommandParams(_command, values);
         }
 
-        public CodingHorror(IDataProvider provider, string sql)
+        public InlineQuery(IDataProvider provider, string sql)
         {
             _provider = provider;
             _command = new QueryCommand(sql, _provider);
@@ -115,6 +115,11 @@ namespace SubSonic.Query
         public int Execute()
         {
             return _provider.ExecuteQuery(_command);
+        }
+
+        public int Execute(string Sql)
+        {
+            return _provider.ExecuteQuery(new QueryCommand(Sql, _provider));
         }
 
         /// <summary>

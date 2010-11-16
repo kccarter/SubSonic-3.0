@@ -13,8 +13,11 @@
 // 
 using System.Data;
 using System.Text;
+using System.Linq;
 using SubSonic.Extensions;
 using SubSonic.Schema;
+using System.Collections.Generic;
+using SubSonic.DataProviders;
 
 namespace SubSonic.SqlGeneration.Schema
 {
@@ -87,12 +90,12 @@ namespace SubSonic.SqlGeneration.Schema
         /// <returns>
         /// SQL fragment representing the supplied columns.
         /// </returns>
-        public override string GenerateColumns(ITable table)
+        public override string GenerateColumns(ITable table, bool includeComputedColumns)
         {
             StringBuilder createSql = new StringBuilder();
 
-            foreach(IColumn col in table.Columns)
-                createSql.AppendFormat("\r\n  `{0}`{1},", col.Name, GenerateColumnAttributes(col));
+            foreach (IColumn col in table.Columns.Where((X) => (includeComputedColumns && (X.IsComputed || !X.IsComputed)) || !X.IsComputed))
+                createSql.AppendFormat("\r\n  `{0}`{1},", col.Name, GenerateColumnAttributes(col, table.Provider.GetTableFromDB(table.Name) != null));
             string columnSql = createSql.ToString();
             return columnSql.Chop(",");
         }
@@ -102,9 +105,9 @@ namespace SubSonic.SqlGeneration.Schema
         /// </summary>
         /// <param name="table"></param>
         /// <returns></returns>
-        public override string BuildCreateTableStatement(ITable table)
+        public override string BuildCreateTableStatement(ITable table,bool includeComputedColumns)
         {
-            string result = base.BuildCreateTableStatement(table);
+            string result = base.BuildCreateTableStatement(table, includeComputedColumns);
 
             result += "\r\nENGINE=InnoDB DEFAULT CHARSET=utf8";
             return result;
@@ -115,7 +118,7 @@ namespace SubSonic.SqlGeneration.Schema
         /// </summary>
         /// <param name="column">The column.</param>
         /// <returns></returns>
-        public override string GenerateColumnAttributes(IColumn column)
+        public override string GenerateColumnAttributes(IColumn column, bool exist)
         {
             StringBuilder sb = new StringBuilder();
             if(column.DataType == DbType.Guid)
@@ -146,6 +149,11 @@ namespace SubSonic.SqlGeneration.Schema
                 sb.Append(" DEFAULT '" + column.DefaultSetting + "'");
 
             return sb.ToString();
+        }
+
+        public override object GetDefaultValue(IColumn Column)
+        {
+            throw new System.NotImplementedException();
         }
 
         /// <summary>
@@ -212,6 +220,16 @@ namespace SubSonic.SqlGeneration.Schema
                 default:
                     return DbType.String;
             }
+        }
+
+        public override IEnumerable<IConstraint> GetConstraintsFromDB(IDataProvider Provider)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public override IEnumerable<IColumnDefinition> GetColumnDefinitionsFromDB(IDataProvider Provider)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }

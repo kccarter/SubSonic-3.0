@@ -142,7 +142,7 @@ namespace SubSonic.Query
             List<object> paramValues = new List<object>();
             foreach(var p in cmd.Parameters)
                 paramValues.Add(p.ParameterValue);
-            ISqlQuery q = new CodingHorror(_provider, cmd.CommandSql, paramValues.ToArray());
+            ISqlQuery q = new InlineQuery(_provider, cmd.CommandSql, paramValues.ToArray());
 
             _queries.Add(q);
         }
@@ -172,7 +172,7 @@ namespace SubSonic.Query
         /// <param name="parameters">The parameters.</param>
         public void QueueForTransaction(string sql, params object[] parameters)
         {
-            var qry = new CodingHorror(sql, parameters);
+            var qry = new InlineQuery(sql, parameters);
             _fixedCommands.Add(qry.GetCommand());
         }
 
