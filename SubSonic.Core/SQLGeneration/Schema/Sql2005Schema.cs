@@ -145,8 +145,9 @@ FROM INFORMATION_SCHEMA.COLUMNS ORDER BY TABLE_NAME, ORDINAL_POSITION ASC";
                 case DbType.Boolean:
                     return "bit";
                 case DbType.SByte:
+					return "image";
                 case DbType.Binary:
-                    return "image";
+                    return "binary";
                 case DbType.Byte:
                     return "tinyint";
                 case DbType.Currency:

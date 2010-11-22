@@ -219,6 +219,11 @@ namespace SubSonic.Linq.Structure
                 sb.Append(m.Member.Name);
                 return m;
             }
+            else if (m.Member.DeclaringType.Name.Contains("Nullable"))
+            {
+                this.Visit(m.Expression);
+                return m;
+            }
             throw new NotSupportedException(string.Format("The member '{0}' is not supported", m.Member.Name));
         }
 
