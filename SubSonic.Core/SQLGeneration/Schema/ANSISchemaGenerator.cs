@@ -28,13 +28,13 @@ namespace SubSonic.SqlGeneration.Schema
     /// </summary>
     public abstract class ANSISchemaGenerator : ISchemaGenerator
     {
-        protected string ADD_COLUMN = @"ALTER TABLE {0} ADD {1}{2};";
+        protected string ADD_COLUMN = @"ALTER TABLE {0} ADD [{1}]{2};";
         protected string ADD_DEFAULT_CONSTRAINT = @"ALTER TABLE [{0}] ADD CONSTRAINT [DF_{0}_{1}] DEFAULT ({2}) FOR [{1}]";
         protected string ADD_UNIQUE_CONSTRAINT = @"ALTER TABLE [{0}] ADD CONSTRAINT [UNIQUE_{0}_{1}] UNIQUE({2})";
-        protected string ADD_FOREIGN_KEY_CONSTRAINT = @"ALTER TABLE [{0}] ADD CONSTRAINT [FK_{0}_{1}] FOREIGN KEY({2}) REFERENCES [{1}]({3})";
-        protected string ALTER_COLUMN = @"ALTER TABLE {0} ALTER COLUMN {1}{2};";
+        protected string ADD_FOREIGN_KEY_CONSTRAINT = @"ALTER TABLE [{0}] ADD CONSTRAINT [FK_{0}_{2}] FOREIGN KEY({2}) REFERENCES [{1}]({3})";
+        protected string ALTER_COLUMN = @"ALTER TABLE {0} ALTER COLUMN [{1}]{2};";
         protected string CREATE_TABLE = "CREATE TABLE {0} ({1} \r\n);";
-        protected string DROP_COLUMN = @"ALTER TABLE {0} DROP COLUMN {1};";
+        protected string DROP_COLUMN = @"ALTER TABLE {0} DROP COLUMN [{1}];";
         protected string DROP_TABLE = @"DROP TABLE {0};";
         protected string DROP_CONSTRAINT = @"ALTER TABLE [{0}].[{1}] DROP CONSTRAINT [{2}]";
         protected string GET_DB_CONSTRAINTS = "";
@@ -98,7 +98,7 @@ namespace SubSonic.SqlGeneration.Schema
 
             foreach (IColumn Column in ForeignKeyColumns)
             {   /// apply foreign key constraints
-                oSql.AppendLine(String.Format(ADD_FOREIGN_KEY_CONSTRAINT, Table, Column.ForeignKeyTo, Table.Columns.Single((X) => X.Name == Column.ForeignKeyTo.PrimaryKey.Name), Column.ForeignKeyTo.PrimaryKey));
+                oSql.AppendLine(String.Format(ADD_FOREIGN_KEY_CONSTRAINT, Table, Column.ForeignKeyTo, Table.Columns.Single((X) => X.Name == Column.Name), Column.ForeignKeyTo.PrimaryKey));
             }
             
             if (UniqueColumns.Count > 0)

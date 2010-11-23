@@ -27,10 +27,10 @@ namespace SubSonic.SqlGeneration.Schema
     {
         public Sql2005Schema()
         {
-            ADD_COLUMN = @"ALTER TABLE [{0}] ADD {1}{2};";
-            ALTER_COLUMN = @"ALTER TABLE [{0}] ALTER COLUMN {1}{2};";
+            ADD_COLUMN = @"ALTER TABLE [{0}] ADD [{1}]{2};";
+            ALTER_COLUMN = @"ALTER TABLE [{0}] ALTER COLUMN [{1}]{2};";
             CREATE_TABLE = "CREATE TABLE [{0}] ({1} \r\n);";
-            DROP_COLUMN = @"ALTER TABLE [{0}] DROP COLUMN {1};";
+            DROP_COLUMN = @"ALTER TABLE [{0}] DROP COLUMN [{1}];";
             DROP_TABLE = @"DROP TABLE {0};";
             GET_DB_CONSTRAINTS =
 @"SELECT OBJECT_NAME(OBJECT_ID) AS Name, SCHEMA_NAME(schema_id) AS SchemaName, OBJECT_NAME(parent_object_id) AS TableName, type_desc AS Type
