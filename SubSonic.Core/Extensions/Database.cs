@@ -393,7 +393,7 @@ namespace SubSonic.Extensions
             if(tbl != null)
             {
                 var hashed = item.ToDictionary();
-                query = new Insert(provider).Into<T>(tbl);
+                query = new Insert(provider).Into(tbl);
                 foreach(string key in hashed.Keys)
                 {
                     IColumn col = tbl.GetColumn(key);

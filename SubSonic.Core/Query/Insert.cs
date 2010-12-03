@@ -121,7 +121,7 @@ namespace SubSonic.Query
         /// <typeparam name="T"></typeparam>
         /// <param name="tbl">The TBL.</param>
         /// <returns></returns>
-        public Insert Into<T>(ITable tbl) where T : new()
+        public Insert Into(ITable tbl)
         {
             ColumnList.Clear();
             Table = tbl;
@@ -289,5 +289,7 @@ namespace SubSonic.Query
         }
 
         #endregion
+
+        
     }
 }

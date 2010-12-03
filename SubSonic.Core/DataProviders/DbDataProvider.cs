@@ -142,19 +142,20 @@ namespace SubSonic.DataProviders
 
         public DataSet ExecuteDataSet(QueryCommand qry)
         {
-            if(Log != null)
+            if (Log != null)
                 Log.WriteLine(qry.CommandSql);
 #if DEBUG
             //Console.Error.WriteLine("ExecuteDataSet(QueryCommand): {0}.", qry.CommandSql);
 #endif
-            DbCommand cmd = Factory.CreateCommand();
-            cmd.CommandText = qry.CommandSql;
-            cmd.CommandType = qry.CommandType;
+
             DataSet ds = new DataSet();
 
-            using(AutomaticConnectionScope scope = new AutomaticConnectionScope(this))
+            using (AutomaticConnectionScope scope = new AutomaticConnectionScope(this))
+            using (DbCommand cmd = Factory.CreateCommand())
             {
                 cmd.Connection = scope.Connection;
+                cmd.CommandText = qry.CommandSql;
+                cmd.CommandType = qry.CommandType;
                 AddParams(cmd, qry);
                 DbDataAdapter da = Factory.CreateDataAdapter();
                 da.SelectCommand = cmd;
@@ -180,9 +181,10 @@ namespace SubSonic.DataProviders
 #endif
 
             object result;
+
             using(AutomaticConnectionScope automaticConnectionScope = new AutomaticConnectionScope(this))
+            using(DbCommand cmd = Factory.CreateCommand())
             {
-                DbCommand cmd = Factory.CreateCommand();
                 cmd.Connection = automaticConnectionScope.Connection;
                 cmd.CommandType = qry.CommandType;
                 cmd.CommandText = qry.CommandSql;
