@@ -17,6 +17,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using SubSonic.Linq.Structure;
 using SubSonic.Query;
+using System.Reflection;
 
 namespace SubSonic.Extensions
 {
@@ -181,6 +182,15 @@ namespace SubSonic.Extensions
                 return Expression.MakeBinary(b.NodeType, left, right, b.IsLiftedToNull, b.Method);
             }
             return b;
+        }
+
+        protected override Expression VisitMethodCall(MethodCallExpression m)
+        {
+            Expression body = base.VisitMethodCall(m);
+
+            current.ParameterValue = Evaluate(body);
+
+            return body;
         }
     }
 }

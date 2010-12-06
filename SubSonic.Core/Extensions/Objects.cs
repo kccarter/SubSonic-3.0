@@ -49,6 +49,13 @@ namespace SubSonic.Extensions
             return ChangeTypeTo(value, conversionType);
         }
 
+        internal static R IsNotNull<T, R>(this T oObj, R Default, Func<T, R> oObject)
+        {
+            if (oObj != null)
+                return oObject(oObj);
+            return Default;
+        }
+
         public static object ChangeTypeTo(this object value, Type conversionType)
         {
             // Note: This if block was taken from Convert.ChangeType as is, and is needed here since we're

@@ -98,7 +98,7 @@ namespace SubSonic.SqlGeneration.Schema
 
             foreach (IColumn Column in ForeignKeyColumns)
             {   /// apply foreign key constraints
-                oSql.AppendLine(String.Format(ADD_FOREIGN_KEY_CONSTRAINT, Table, Column.ForeignKeyTo, Table.Columns.Single((X) => X.Name == Column.Name), Column.ForeignKeyTo.PrimaryKey));
+                oSql.AppendLine(String.Format(ADD_FOREIGN_KEY_CONSTRAINT, Table.Name, Column.ForeignKeyTo.Name, Table.Columns.Single((X) => X.Name == Column.Name), Column.ForeignKeyTo.PrimaryKey));
             }
             
             if (UniqueColumns.Count > 0)

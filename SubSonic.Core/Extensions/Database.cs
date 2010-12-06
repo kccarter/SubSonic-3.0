@@ -143,21 +143,33 @@ namespace SubSonic.Extensions
         public static void Load<T>(this IDataReader rdr, T item)
         {
             Type iType = typeof(T);
+            ITable iTable = ProviderFactory.GetProvider().FindTable(iType.Name);
+
+            if (iTable == null && item is ITable)
+            {
+                iTable = (ITable)Activator.CreateInstance(iType);
+            }
 
             PropertyInfo[] cachedProps = iType.GetProperties();
             FieldInfo[] cachedFields = iType.GetFields();
-
+            IColumn[] cachedColumns = iTable.IsNotNull(new IColumn[]{}, (X) => 
+                X.Columns.ToArray());
+            
             PropertyInfo currentProp;
             FieldInfo currentField = null;
 
             for(int i = 0; i < rdr.FieldCount; i++)
             {
                 string pName = rdr.GetName(i);
-                currentProp = cachedProps.SingleOrDefault(x => x.Name.Equals(pName, StringComparison.InvariantCultureIgnoreCase));
+                currentProp = cachedProps.SingleOrDefault((X) =>
+                        X.Name.Equals(cachedColumns.SingleOrDefault((Y) =>
+                            Y.Name == pName).IsNotNull(pName, (Y) => Y.PropertyName), StringComparison.CurrentCultureIgnoreCase));
 
                 //if the property is null, likely it's a Field
                 if(currentProp == null)
-                    currentField = cachedFields.SingleOrDefault(x => x.Name.Equals(pName, StringComparison.InvariantCultureIgnoreCase));
+                    currentField = cachedFields.SingleOrDefault((X) => 
+                        X.Name.Equals(cachedColumns.SingleOrDefault((Y) =>
+                            Y.Name == pName).IsNotNull(pName, (Y) => Y.PropertyName), StringComparison.CurrentCultureIgnoreCase));
 
                 if(currentProp != null && !DBNull.Value.Equals(rdr.GetValue(i)))
                 {
