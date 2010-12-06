@@ -169,7 +169,6 @@ namespace SubSonic.Query
                 constrain.ParameterName = column.ParameterName;
                 constrain.QualifiedColumnName = column.QualifiedName;
                 constrain.TableName = column.Table.Name;
-                constrain.ParameterValue = Convert.ChangeType(constrain.ParameterValue.ToString(), typeof(T).GetProperty(column.PropertyName).PropertyType);
                 Constraints.Add(constrain);
             }
 

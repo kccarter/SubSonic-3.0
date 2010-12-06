@@ -186,11 +186,7 @@ namespace SubSonic.Extensions
 
         protected override Expression VisitMethodCall(MethodCallExpression m)
         {
-            Expression body = base.VisitMethodCall(m);
-
-            current.ParameterValue = Evaluate(body);
-
-            return body;
+            return Visit(Evaluate(base.VisitMethodCall(m)));
         }
     }
 }
