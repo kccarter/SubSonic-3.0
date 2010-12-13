@@ -557,6 +557,21 @@ namespace SubSonic.Query
         }
 
         /// <summary>
+        /// Froms the specified SQL Query and gives the query a name
+        /// </summary>
+        /// <param name="oQuery">SqlQuery that makes up the from query.</param>
+        /// <param name="oAlais">Set's the name of the from query.</param>
+        /// <returns>returns the current query object.</returns>
+        public SqlQuery From(SqlQuery oQuery, String oAlais)
+        {
+            FromQuery oFrom = new FromQuery(oQuery, oAlais);
+
+            FromTables.Add(oFrom);
+
+            return this;
+        }
+
+        /// <summary>
         /// Froms the specified TBL.
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -1111,13 +1126,25 @@ namespace SubSonic.Query
         {
             int count = 0;
             try
-            {
-                using(IDataReader rdr = ExecuteReader())
-                {
-                    while(rdr.Read())
-                        count++;
-                    rdr.Close();
-                }
+            {   /// this should be re-factored to pass the counting to the DB and return a scalar value.
+                String sAlais = "CountOfQuery";
+
+                SqlQuery oRecordCountQuery = new Select(Aggregate.Count("*", sAlais))
+                    .From(this, sAlais);
+
+                /// Get the Query Command
+                QueryCommand cmd = oRecordCountQuery.GetCommand();
+                /// Set the ConstraintParameters
+                SetConstraintParams(this, cmd);
+
+                count = (int)_provider.ExecuteScalar(cmd).ChangeTypeTo<int>();
+
+                //using(IDataReader rdr = ExecuteReader())
+                //{
+                //    while(rdr.Read())
+                //        count++;
+                //    rdr.Close();
+                //}
             }
             catch(Exception x)
             {

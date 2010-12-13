@@ -20,6 +20,7 @@ using System.Linq;
 using SubSonic.DataProviders;
 using SubSonic.Schema;
 using SubSonic.SqlGeneration.Schema;
+using System.Text.RegularExpressions;
 
 namespace SubSonic.Extensions
 {
@@ -322,5 +323,36 @@ namespace SubSonic.Extensions
 			var enumType = Enum.GetUnderlyingType(type);
     		return Database.GetDbType(enumType);
     	}
+
+        /// <summary>
+        /// Get the IColumn from a qualefied column name
+        /// </summary>
+        /// <param name="sourceString"></param>
+        /// <returns></returns>
+        public static IColumn ToDBColumnFromQualifiedName(this string qualifiedName)
+        {
+            Regex oRegEx = new System.Text.RegularExpressions.Regex(RegexPattern.SQL_QUALIFIED_COLUMN_NAME);
+
+            MatchCollection oColl = oRegEx.Matches(qualifiedName);
+
+            if (oColl.Count == 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                IColumn oDbColumn = ProviderFactory.GetProvider()
+                    .FindTable(oColl[0].Value)
+                    .GetColumn(oColl[1].Value);
+
+                return oDbColumn;
+            }
+            catch
+            {
+                return null;
+            }
+
+        }
     }
 }

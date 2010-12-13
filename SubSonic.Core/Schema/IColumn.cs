@@ -44,7 +44,18 @@ namespace SubSonic.Schema
         /// </summary>
         /// <value><c>true</c> if this instance is string; otherwise, <c>false</c>.</value>
         bool IsString { get; }
-
+        /// <summary>
+        /// Gets a value indicating whether this instance is binary
+        /// </summary>
+        /// <value><c>true</c> if this instance is binary; otherwise, <c>false</c>.</value>
+        bool IsBinary { get; }
+         /// <summary>
+        /// Gets a value indicating whether this instance is boolean.
+        /// </summary>
+        /// <value>
+        /// 	<c>true</c> if this instance is boolean; otherwise, <c>false</c>.
+        /// </value>
+        bool IsBoolean { get; }
         string CreateSql { get; }
         string AlterSql { get; }
         string DeleteSql { get; }

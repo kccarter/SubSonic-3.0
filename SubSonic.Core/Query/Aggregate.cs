@@ -13,6 +13,8 @@
 // 
 using System;
 using SubSonic.Schema;
+using System.Data;
+using SubSonic.Extensions;
 
 namespace SubSonic.Query
 {
@@ -538,6 +540,15 @@ namespace SubSonic.Query
             }
 
             return result;
+        }
+
+        public DbType GetDataType()
+        {
+            IColumn oColumn = ColumnName.ToDBColumnFromQualifiedName();
+
+            if(oColumn != null)
+                return oColumn.DataType;
+            return DbType.String;
         }
     }
 }

@@ -294,7 +294,8 @@ namespace SubSonic.SqlGeneration
                 {
                     if(!isFirst)
                         sb.Append(", ");
-                    sb.Append(tbl.QualifiedName);
+                    else
+                        sb.Append(tbl.QualifiedName);
                     isFirst = false;
                 }
             }
@@ -757,11 +758,12 @@ namespace SubSonic.SqlGeneration
         {
             StringBuilder sbColumns = new StringBuilder();
             int loopCount = 1;
-
+            
             foreach(ITable tbl in query.FromTables)
             {
+
                 if(tbl.Columns.Count > 0)
-                {
+                {   
                     string columnList = GetQualifiedSelect(tbl);
                     sbColumns.Append(columnList);
 

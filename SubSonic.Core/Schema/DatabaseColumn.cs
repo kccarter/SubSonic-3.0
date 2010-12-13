@@ -132,6 +132,32 @@ namespace SubSonic.Schema
                        DataType == DbType.VarNumeric;
             }
         }
+        /// <summary>
+        /// Gets a value indicating whether this instance is binary.
+        /// </summary>
+        /// <value>
+        /// 	<c>true</c> if this instance is binary; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsBinary
+        {
+            get
+            {
+                return DataType == DbType.Binary;
+            }
+        }
+        /// <summary>
+        /// Gets a value indicating whether this instance is boolean.
+        /// </summary>
+        /// <value>
+        /// 	<c>true</c> if this instance is boolean; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsBoolean
+        {
+            get
+            {
+                return DataType == DbType.Boolean;
+            }
+        }
 
         /// <summary>
         /// Gets a value indicating whether this instance is date time.

@@ -64,6 +64,27 @@ namespace SubSonic.Extensions
         }
 
         /// <summary>
+        /// Checks the string for empty or null value
+        /// </summary>
+        /// <param name="sourceString">the source string</param>
+        /// <returns>check result</returns>
+        public static bool IsNullOrEmpty(this string sourceString)
+        {
+            return String.IsNullOrEmpty(sourceString);
+        }
+
+        /// <summary>
+        /// Checks the string for empty or null value
+        /// </summary>
+        /// <param name="sourceString">the source string</param>
+        /// <returns>check result</returns>
+        public static bool IsNotNullOrEmpty(this string sourceString)
+        {
+            return !String.IsNullOrEmpty(sourceString);
+        }
+
+
+        /// <summary>
         /// Strips the last specified chars from a string.
         /// </summary>
         /// <param name="sourceString">The source string.</param>

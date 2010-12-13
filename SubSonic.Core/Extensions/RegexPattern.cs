@@ -51,6 +51,8 @@ namespace SubSonic.Extensions
         public const string SQL_LIKE = @"\x20like\x20";
         public const string SQL_NOT_EQUAL = @"\<.*\>";
         public const string SQL_NOT_LIKE = @"\x20not\x20like\x20";
+        public const string SQL_QUALIFIED_COLUMN_NAME =
+            @"^\[*[A-Za-Z]\].\[(*[A-Za-Z])\].\[(*[A-Za-Z])\]|^\[(*[A-Za-Z])\].\[(*[A-Za-Z])\]";
 
         public const string STRONG_PASSWORD =
             @"(?=^.{8,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*";

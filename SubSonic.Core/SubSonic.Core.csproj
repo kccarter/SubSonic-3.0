@@ -74,6 +74,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Linq\Translation\CountOrderByRemover.cs" />
+    <Compile Include="Query\FromQuery.cs" />
     <Compile Include="Repository\SimpleRepositoryOptions.cs" />
     <Compile Include="Repository\SimpleRepositoryOptionsExtensions.cs" />
     <Compile Include="Schema\DatabaseContraint.cs" />

@@ -13,6 +13,7 @@
 // 
 using SubSonic.DataProviders;
 using SubSonic.Schema;
+using System;
 
 namespace SubSonic.Query
 {
@@ -21,14 +22,22 @@ namespace SubSonic.Query
     /// <summary>
     /// 
     /// </summary>
-    public class Delete<T> : SqlQuery where T : new()
+    public class Delete<T> : Delete where T : new()
     {
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Delete&lt;T&gt;"/> class.
         /// </summary>
-        public Delete() : this(ProviderFactory.GetProvider()) {}
+        public Delete() : this(ProviderFactory.GetProvider()) { }
 
+        public Delete(ITable table, IDataProvider provider) : base(table, provider) { }
+
+        public Delete(IDataProvider provider) : this(provider.FindTable(typeof(T).Name), provider) { }
+    }
+
+    public class Delete
+        : SqlQuery
+    {
         /// <summary>
         /// Initializes a new instance of the <see cref="Delete&lt;T&gt;"/> class.
         /// </summary>
@@ -43,7 +52,7 @@ namespace SubSonic.Query
             FromTables.Add(tbl);
         }
 
-        public Delete(IDataProvider provider) : this(provider.FindTable(typeof(T).Name), provider) {}
+        public Delete(Type Type, IDataProvider provider) : this(provider.FindTable(Type.Name), provider) { }
     }
 
     /// <summary>
