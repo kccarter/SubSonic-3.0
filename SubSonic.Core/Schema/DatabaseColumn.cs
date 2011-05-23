@@ -54,6 +54,7 @@ namespace SubSonic.Schema
         public bool IsNullable { get; set; }
         public bool IsReadOnly { get; set; }
         public bool IsComputed { get; set; }
+        public string ComputedSQL { get; set; }
         public bool IsUnique { get; set; }
         public bool AutoIncrement { get; set; }
         public int NumberScale { get; set; }

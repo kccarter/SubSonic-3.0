@@ -20,6 +20,10 @@ namespace SubSonic.Schema
         object DefaultValue { get; }
         string ParameterName { get; }
         string PropertyName { get; set; }
+        /// <summary>
+        /// Get or Set the sql statement for a computed column
+        /// </summary>
+        string ComputedSQL { get; set; }
 
         ITable ForeignKeyTo { get; set; }
 

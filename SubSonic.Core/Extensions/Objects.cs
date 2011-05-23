@@ -177,125 +177,132 @@ namespace SubSonic.Extensions
 
     	public static ITable ToSchemaTable(this Type type, IDataProvider provider)
         {
-            string tableName = type.Name;
-            tableName = tableName.MakePlural();
+            ITable result = null;
 
-			var typeAttributes = type.GetCustomAttributes(false);
-			var tableNameAttr = (SubSonicTableNameOverrideAttribute)typeAttributes.FirstOrDefault(x => x.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicTableNameOverrideAttribute"));
-
-			if (tableNameAttr != null && tableNameAttr.IsSet)
-			{
-				tableName = tableNameAttr.TableName;
-			}
-
-            var result = new DatabaseTable(tableName, provider);
-            result.ClassName = type.Name;
-
-            var props = type.GetProperties();
-            foreach(var prop in props)
+            if (type.GetInterface(typeof(ITable).FullName) == null)
             {
-                var attributes = prop.GetCustomAttributes(false);
-                bool isIgnored = false;
-                foreach(var att in attributes)
+                string tableName = type.Name;
+                tableName = tableName.MakePlural();
+
+                var typeAttributes = type.GetCustomAttributes(false);
+                var tableNameAttr = (SubSonicTableNameOverrideAttribute)typeAttributes.FirstOrDefault(x => x.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicTableNameOverrideAttribute"));
+
+                if (tableNameAttr != null && tableNameAttr.IsSet)
                 {
-                    isIgnored = att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicIgnoreAttribute");
-                    if(isIgnored)
-                        break;
+                    tableName = tableNameAttr.TableName;
                 }
-                if(CanGenerateSchemaFor(prop.PropertyType) & !isIgnored)
+
+                result = new DatabaseTable(tableName, provider);
+                result.ClassName = type.Name;
+                /// get all the properties that have not been excluded
+                var props = type.GetProperties();
+
+                foreach (var prop in props)
                 {
-                    var column = new DatabaseColumn(prop.Name, result);
-					bool isNullable = prop.PropertyType.Name.Contains("Nullable");
+                    bool isIgnored = prop.GetCustomAttributes(typeof(SubSonicIgnoreAttribute), true).Length > 0 || !prop.CanWrite || !prop.CanRead;
+                    /// any one of the above is grounds for the property to not be included in the schema
 
-                	column.DataType = IdentifyColumnDataType(prop.PropertyType, isNullable);
-
-                    if(column.DataType == DbType.Decimal || column.DataType == DbType.Double)
+                    if (CanGenerateSchemaFor(prop.PropertyType) & !isIgnored)
                     {
-                        //default to most common;
-                        column.NumberScale = 2;
-                        column.NumericPrecision = 10;
+                        var attributes = prop.GetCustomAttributes(false);
+                        var column = new DatabaseColumn(prop.Name, result);
+                        bool isNullable = prop.PropertyType.Name.Contains("Nullable");
 
-                        //loop the attributes to see if there's a length
-                        foreach(var att in attributes)
+                        column.DataType = IdentifyColumnDataType(prop.PropertyType, isNullable);
+
+                        if (column.DataType == DbType.Decimal || column.DataType == DbType.Double)
                         {
-                            if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicNumericPrecisionAttribute"))
+                            //default to most common;
+                            column.NumberScale = 2;
+                            column.NumericPrecision = 10;
+
+                            //loop the attributes to see if there's a length
+                            foreach (var att in attributes)
                             {
-                                var precision = (SubSonicNumericPrecisionAttribute)att;
-                                column.NumberScale = precision.Scale;
-                                column.NumericPrecision = precision.Precision;
+                                if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicNumericPrecisionAttribute"))
+                                {
+                                    var precision = (SubSonicNumericPrecisionAttribute)att;
+                                    column.NumberScale = precision.Scale;
+                                    column.NumericPrecision = precision.Precision;
+                                }
                             }
                         }
-                    }
-                    else if(column.DataType == DbType.String)
-                    {
-                        column.MaxLength = 255;
-
-                        //loop the attributes to see if there's a length
-                        foreach(var att in attributes)
+                        else if (column.DataType == DbType.String)
                         {
-                            if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicStringLengthAttribute"))
-                            {
-                                var lengthAtt = (SubSonicStringLengthAttribute)att;
-                                column.MaxLength = lengthAtt.Length;
-                            }
+                            column.MaxLength = 255;
 
-                            if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicNullStringAttribute"))
+                            //loop the attributes to see if there's a length
+                            foreach (var att in attributes)
                             {
-                                isNullable = true;
+                                if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicStringLengthAttribute"))
+                                {
+                                    var lengthAtt = (SubSonicStringLengthAttribute)att;
+                                    column.MaxLength = lengthAtt.Length;
+                                }
+
+                                if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicNullStringAttribute"))
+                                {
+                                    isNullable = true;
+                                }
                             }
                         }
-                    }
 
-                    if(isNullable)
-                        column.IsNullable = true;
+                        if (isNullable)
+                            column.IsNullable = true;
 
-                    //set the length on this if it's text - specifically we want to know
-                    //if the LongString attribute is used - we'll set to nvarchar MAX or ntext depending
+                        //set the length on this if it's text - specifically we want to know
+                        //if the LongString attribute is used - we'll set to nvarchar MAX or ntext depending
 
-                    foreach(var att in attributes)
-                    {
-                        if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicLongStringAttribute"))
-                            column.MaxLength = 8001;
-                    }
-
-                    //loop the attributes - see if a PK attribute was set
-                    foreach(var att in attributes)
-                    {
-                        if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicPrimaryKeyAttribute")) {
-                            column.IsPrimaryKey = true;
-                            column.IsNullable = false;
-                            if(column.IsNumeric)
-                                column.AutoIncrement = true;
-                            else if (column.IsString && column.MaxLength == 0)
-                                column.MaxLength = 255;
+                        foreach (var att in attributes)
+                        {
+                            if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicLongStringAttribute"))
+                                column.MaxLength = 8001;
                         }
-                        
-                    }
 
-                    result.Columns.Add(column);
+                        //loop the attributes - see if a PK attribute was set
+                        foreach (var att in attributes)
+                        {
+                            if (att.ToString().Equals("SubSonic.SqlGeneration.Schema.SubSonicPrimaryKeyAttribute"))
+                            {
+                                column.IsPrimaryKey = true;
+                                column.IsNullable = false;
+                                if (column.IsNumeric)
+                                    column.AutoIncrement = true;
+                                else if (column.IsString && column.MaxLength == 0)
+                                    column.MaxLength = 255;
+                            }
+
+                        }
+
+                        result.Columns.Add(column);
+                    }
+                }
+
+                //if the PK is still null-look for a column called [tableName]ID - if it's there then make it PK
+                if (result.PrimaryKey == null)
+                {
+                    var pk = (result.GetColumn(type.Name + "ID") ?? result.GetColumn("ID")) ?? result.GetColumn("Key");
+
+                    if (pk != null)
+                    {
+                        pk.IsPrimaryKey = true;
+                        //if it's an INT then AutoIncrement it
+                        if (pk.IsNumeric)
+                            pk.AutoIncrement = true;
+                        else if (pk.IsString && pk.MaxLength == 0)
+                            pk.MaxLength = 255;
+                        //} else {
+                        //    pk = new DatabaseColumn(type.Name + "ID", result);
+                        //    pk.DataType = DbType.Int32;
+                        //    pk.IsPrimaryKey = true;
+                        //    pk.AutoIncrement = true;
+                        //    result.Columns.Insert(0, pk);
+                    }
                 }
             }
-
-            //if the PK is still null-look for a column called [tableName]ID - if it's there then make it PK
-            if(result.PrimaryKey == null)
+            else
             {
-                var pk = (result.GetColumn(type.Name + "ID") ?? result.GetColumn("ID")) ?? result.GetColumn("Key");
-
-                if(pk != null)
-                {
-                    pk.IsPrimaryKey = true;
-                    //if it's an INT then AutoIncrement it
-                    if(pk.IsNumeric)
-                        pk.AutoIncrement = true;
-                    else if(pk.IsString && pk.MaxLength == 0)
-                        pk.MaxLength = 255;
-                    //} else {
-                    //    pk = new DatabaseColumn(type.Name + "ID", result);
-                    //    pk.DataType = DbType.Int32;
-                    //    pk.IsPrimaryKey = true;
-                    //    pk.AutoIncrement = true;
-                    //    result.Columns.Insert(0, pk);
-                }
+                result = (ITable)Activator.CreateInstance(type);
             }
 
             //we should have a PK at this point
